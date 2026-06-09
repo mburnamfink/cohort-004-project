@@ -158,34 +158,42 @@ describe("categoryService", () => {
 
   describe("createCategory", () => {
     it("creates a category with auto-generated slug", () => {
-      const cat = createCategory("Machine Learning");
-      expect(cat.name).toBe("Machine Learning");
-      expect(cat.slug).toBe("machine-learning");
-      expect(cat.id).toBeDefined();
+      const result = createCategory("Machine Learning");
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.category.name).toBe("Machine Learning");
+      expect(result.category.slug).toBe("machine-learning");
+      expect(result.category.id).toBeDefined();
     });
 
-    it("throws on duplicate name", () => {
-      expect(() => createCategory("Programming")).toThrow(
+    it("fails on duplicate name", () => {
+      const result = createCategory("Programming");
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error).toBe(
         'A category with the name "Programming" already exists.'
       );
     });
 
-    it("throws on duplicate slug", () => {
-      // "programming!" would produce slug "programming" which already exists
+    it("fails on duplicate slug", () => {
       testDb
         .insert(schema.categories)
         .values({ name: "Data Science", slug: "data-science" })
         .run();
 
-      expect(() => createCategory("Data Science")).toThrow(
+      const result = createCategory("Data Science");
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error).toBe(
         'A category with the name "Data Science" already exists.'
       );
     });
 
-    it("throws on slug collision even with different name", () => {
-      // Create a category, then try another name that produces the same slug
+    it("fails on slug collision even with different name", () => {
+      // "Web Dev" and "web dev" both slugify to "web-dev"
       createCategory("Web Dev");
-      expect(() => createCategory("web dev")).toThrow();
+      const result = createCategory("web dev");
+      expect(result.ok).toBe(false);
     });
   });
 
@@ -193,37 +201,43 @@ describe("categoryService", () => {
 
   describe("updateCategory", () => {
     it("updates name and regenerates slug", () => {
-      const updated = updateCategory(base.category.id, "Web Development");
-      expect(updated).toBeDefined();
-      expect(updated!.name).toBe("Web Development");
-      expect(updated!.slug).toBe("web-development");
+      const result = updateCategory(base.category.id, "Web Development");
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.category.name).toBe("Web Development");
+      expect(result.category.slug).toBe("web-development");
     });
 
     it("allows updating to the same name (no-op rename)", () => {
-      const updated = updateCategory(base.category.id, "Programming");
-      expect(updated).toBeDefined();
-      expect(updated!.name).toBe("Programming");
+      const result = updateCategory(base.category.id, "Programming");
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.category.name).toBe("Programming");
     });
 
-    it("throws on duplicate name with another category", () => {
+    it("fails on duplicate name with another category", () => {
       testDb
         .insert(schema.categories)
         .values({ name: "Design", slug: "design" })
         .run();
 
-      expect(() => updateCategory(base.category.id, "Design")).toThrow(
+      const result = updateCategory(base.category.id, "Design");
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error).toBe(
         'A category with the name "Design" already exists.'
       );
     });
 
-    it("throws on duplicate slug with another category", () => {
+    it("fails on duplicate slug with another category", () => {
       testDb
         .insert(schema.categories)
         .values({ name: "Design", slug: "design" })
         .run();
 
       // "design" name → "design" slug, which already exists under a different id
-      expect(() => updateCategory(base.category.id, "Design")).toThrow();
+      const result = updateCategory(base.category.id, "Design");
+      expect(result.ok).toBe(false);
     });
   });
 
@@ -237,16 +251,18 @@ describe("categoryService", () => {
         .returning()
         .get();
 
-      const deleted = deleteCategory(empty.id);
-      expect(deleted).toBeDefined();
-      expect(deleted!.id).toBe(empty.id);
+      const result = deleteCategory(empty.id);
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.category.id).toBe(empty.id);
       expect(getCategoryById(empty.id)).toBeUndefined();
     });
 
-    it("throws when category has courses", () => {
-      expect(() => deleteCategory(base.category.id)).toThrow(
-        "Cannot delete: 1 course use this category."
-      );
+    it("fails when category has courses", () => {
+      const result = deleteCategory(base.category.id);
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error).toBe("Cannot delete: 1 course use this category.");
     });
 
     it("includes course count in error message", () => {
@@ -263,9 +279,10 @@ describe("categoryService", () => {
         })
         .run();
 
-      expect(() => deleteCategory(base.category.id)).toThrow(
-        "Cannot delete: 2 courses use this category."
-      );
+      const result = deleteCategory(base.category.id);
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error).toBe("Cannot delete: 2 courses use this category.");
     });
   });
 });

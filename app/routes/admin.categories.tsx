@@ -90,39 +90,27 @@ export async function action({ request }: Route.ActionArgs) {
   const { intent } = parsed.data;
 
   if (intent === "create") {
-    try {
-      createCategory(parsed.data.name);
-      return { success: true, message: "Category created." };
-    } catch (e) {
-      return data(
-        { error: e instanceof Error ? e.message : "Failed to create category." },
-        { status: 400 }
-      );
+    const result = createCategory(parsed.data.name);
+    if (!result.ok) {
+      return data({ error: result.error }, { status: 400 });
     }
+    return { success: true, message: "Category created." };
   }
 
   if (intent === "update") {
-    try {
-      updateCategory(parsed.data.categoryId, parsed.data.name);
-      return { success: true, message: "Category updated." };
-    } catch (e) {
-      return data(
-        { error: e instanceof Error ? e.message : "Failed to update category." },
-        { status: 400 }
-      );
+    const result = updateCategory(parsed.data.categoryId, parsed.data.name);
+    if (!result.ok) {
+      return data({ error: result.error }, { status: 400 });
     }
+    return { success: true, message: "Category updated." };
   }
 
   if (intent === "delete") {
-    try {
-      deleteCategory(parsed.data.categoryId);
-      return { success: true, message: "Category deleted." };
-    } catch (e) {
-      return data(
-        { error: e instanceof Error ? e.message : "Failed to delete category." },
-        { status: 400 }
-      );
+    const result = deleteCategory(parsed.data.categoryId);
+    if (!result.ok) {
+      return data({ error: result.error }, { status: 400 });
     }
+    return { success: true, message: "Category deleted." };
   }
 
   throw data("Invalid action.", { status: 400 });

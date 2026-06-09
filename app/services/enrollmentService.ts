@@ -57,27 +57,29 @@ export function isUserEnrolled(userId: number, courseId: number) {
   return !!findEnrollment(userId, courseId);
 }
 
+export type EnrollmentResult =
+  | { ok: true; enrollment: typeof enrollments.$inferSelect }
+  | { ok: false; error: string };
+
 export function enrollUser(
   userId: number,
   courseId: number,
   sendEmail: boolean,
   skipValidation: boolean
-) {
+): EnrollmentResult {
   if (!skipValidation) {
-    // Check if already enrolled
     const existing = findEnrollment(userId, courseId);
     if (existing) {
-      throw new Error("User is already enrolled in this course");
+      return { ok: false, error: "User is already enrolled in this course" };
     }
 
-    // Check that the course exists
     const course = db
       .select()
       .from(courses)
       .where(eq(courses.id, courseId))
       .get();
     if (!course) {
-      throw new Error("Course not found");
+      return { ok: false, error: "Course not found" };
     }
   }
 
@@ -92,22 +94,27 @@ export function enrollUser(
     // Would send welcome email here
   }
 
-  return enrollment;
+  return { ok: true, enrollment };
 }
 
-export function unenrollUser(userId: number, courseId: number) {
+export function unenrollUser(
+  userId: number,
+  courseId: number
+): EnrollmentResult {
   const existing = findEnrollment(userId, courseId);
   if (!existing) {
-    throw new Error("User is not enrolled in this course");
+    return { ok: false, error: "User is not enrolled in this course" };
   }
 
-  return db
+  const enrollment = db
     .delete(enrollments)
     .where(
       and(eq(enrollments.userId, userId), eq(enrollments.courseId, courseId))
     )
     .returning()
-    .get();
+    .get()!;
+
+  return { ok: true, enrollment };
 }
 
 export function markEnrollmentComplete(userId: number, courseId: number) {

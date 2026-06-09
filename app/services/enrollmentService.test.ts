@@ -34,27 +34,30 @@ describe("enrollmentService", () => {
 
   describe("enrollUser", () => {
     it("enrolls a user in a course", () => {
-      const enrollment = enrollUser(base.user.id, base.course.id, false, false);
+      const result = enrollUser(base.user.id, base.course.id, false, false);
 
-      expect(enrollment).toBeDefined();
-      expect(enrollment.userId).toBe(base.user.id);
-      expect(enrollment.courseId).toBe(base.course.id);
-      expect(enrollment.enrolledAt).toBeDefined();
-      expect(enrollment.completedAt).toBeNull();
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.enrollment.userId).toBe(base.user.id);
+      expect(result.enrollment.courseId).toBe(base.course.id);
+      expect(result.enrollment.enrolledAt).toBeDefined();
+      expect(result.enrollment.completedAt).toBeNull();
     });
 
-    it("throws when enrolling a user who is already enrolled", () => {
+    it("fails when enrolling a user who is already enrolled", () => {
       enrollUser(base.user.id, base.course.id, false, false);
 
-      expect(() =>
-        enrollUser(base.user.id, base.course.id, false, false)
-      ).toThrowError("User is already enrolled in this course");
+      const result = enrollUser(base.user.id, base.course.id, false, false);
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error).toBe("User is already enrolled in this course");
     });
 
-    it("throws when enrolling in a non-existent course", () => {
-      expect(() =>
-        enrollUser(base.user.id, 9999, false, false)
-      ).toThrowError("Course not found");
+    it("fails when enrolling in a non-existent course", () => {
+      const result = enrollUser(base.user.id, 9999, false, false);
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error).toBe("Course not found");
     });
 
     it("skips course existence check when skipValidation is true", () => {
@@ -71,12 +74,12 @@ describe("enrollmentService", () => {
 
       // Second enrollment with skipValidation — no "already enrolled" error
       const second = enrollUser(base.user.id, base.course.id, false, true);
-      expect(second).toBeDefined();
+      expect(second.ok).toBe(true);
     });
 
     it("accepts sendEmail parameter without error", () => {
-      const enrollment = enrollUser(base.user.id, base.course.id, true, false);
-      expect(enrollment).toBeDefined();
+      const result = enrollUser(base.user.id, base.course.id, true, false);
+      expect(result.ok).toBe(true);
     });
   });
 
@@ -85,15 +88,17 @@ describe("enrollmentService", () => {
       enrollUser(base.user.id, base.course.id, false, false);
 
       const result = unenrollUser(base.user.id, base.course.id);
-      expect(result).toBeDefined();
-      expect(result!.userId).toBe(base.user.id);
-      expect(result!.courseId).toBe(base.course.id);
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.enrollment.userId).toBe(base.user.id);
+      expect(result.enrollment.courseId).toBe(base.course.id);
     });
 
-    it("throws when unenrolling a user who is not enrolled", () => {
-      expect(() =>
-        unenrollUser(base.user.id, base.course.id)
-      ).toThrowError("User is not enrolled in this course");
+    it("fails when unenrolling a user who is not enrolled", () => {
+      const result = unenrollUser(base.user.id, base.course.id);
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error).toBe("User is not enrolled in this course");
     });
 
     it("removes the enrollment from the database", () => {
@@ -135,10 +140,11 @@ describe("enrollmentService", () => {
   describe("getEnrollmentById", () => {
     it("returns enrollment by id", () => {
       const created = enrollUser(base.user.id, base.course.id, false, false);
+      if (!created.ok) throw new Error("enrollUser should have succeeded");
 
-      const found = getEnrollmentById(created.id);
+      const found = getEnrollmentById(created.enrollment.id);
       expect(found).toBeDefined();
-      expect(found!.id).toBe(created.id);
+      expect(found!.id).toBe(created.enrollment.id);
     });
 
     it("returns undefined for non-existent id", () => {

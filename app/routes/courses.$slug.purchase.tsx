@@ -148,7 +148,10 @@ export async function action({ params, request }: Route.ActionArgs) {
       throw redirect(`/courses/${slug}`);
     }
     createPurchase(currentUserId, course.id, pppPrice, country);
-    enrollUser(currentUserId, course.id, false, false);
+    const enrollment = enrollUser(currentUserId, course.id, false, false);
+    if (!enrollment.ok) {
+      throw data(enrollment.error, { status: 400 });
+    }
     throw redirect(`/courses/${slug}/welcome`);
   }
 

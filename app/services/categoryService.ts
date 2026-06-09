@@ -52,48 +52,64 @@ export function getAllCategoriesWithCourseCounts() {
     .all();
 }
 
-export function createCategory(name: string) {
+export type CategoryResult =
+  | { ok: true; category: typeof categories.$inferSelect }
+  | { ok: false; error: string };
+
+export function createCategory(name: string): CategoryResult {
   const slug = slugify(name);
 
-  const existingName = getCategoryByName(name);
-  if (existingName) {
-    throw new Error(`A category with the name "${name}" already exists.`);
+  if (getCategoryByName(name)) {
+    return {
+      ok: false,
+      error: `A category with the name "${name}" already exists.`,
+    };
   }
 
-  const existingSlug = getCategoryBySlug(slug);
-  if (existingSlug) {
-    throw new Error(`A category with the slug "${slug}" already exists.`);
+  if (getCategoryBySlug(slug)) {
+    return {
+      ok: false,
+      error: `A category with the slug "${slug}" already exists.`,
+    };
   }
 
-  return db
+  const category = db
     .insert(categories)
     .values({ name, slug })
     .returning()
     .get();
+  return { ok: true, category };
 }
 
-export function updateCategory(id: number, name: string) {
+export function updateCategory(id: number, name: string): CategoryResult {
   const slug = slugify(name);
 
   const existingName = getCategoryByName(name);
   if (existingName && existingName.id !== id) {
-    throw new Error(`A category with the name "${name}" already exists.`);
+    return {
+      ok: false,
+      error: `A category with the name "${name}" already exists.`,
+    };
   }
 
   const existingSlug = getCategoryBySlug(slug);
   if (existingSlug && existingSlug.id !== id) {
-    throw new Error(`A category with the slug "${slug}" already exists.`);
+    return {
+      ok: false,
+      error: `A category with the slug "${slug}" already exists.`,
+    };
   }
 
-  return db
+  const category = db
     .update(categories)
     .set({ name, slug })
     .where(eq(categories.id, id))
     .returning()
     .get();
+  return { ok: true, category };
 }
 
-export function deleteCategory(id: number) {
+export function deleteCategory(id: number): CategoryResult {
   const courseCount = db
     .select({ count: sql<number>`count(*)` })
     .from(courses)
@@ -102,14 +118,16 @@ export function deleteCategory(id: number) {
 
   const count = courseCount?.count ?? 0;
   if (count > 0) {
-    throw new Error(
-      `Cannot delete: ${count} course${count === 1 ? "" : "s"} use this category.`
-    );
+    return {
+      ok: false,
+      error: `Cannot delete: ${count} course${count === 1 ? "" : "s"} use this category.`,
+    };
   }
 
-  return db
+  const category = db
     .delete(categories)
     .where(eq(categories.id, id))
     .returning()
-    .get();
+    .get()!;
+  return { ok: true, category };
 }

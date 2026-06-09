@@ -365,12 +365,12 @@ export async function action({ params, request }: Route.ActionArgs) {
       }
     }
 
-    const result = computeResult(currentUserId, quizId, selectedAnswers);
-    if (!result) {
-      throw data("Failed to score quiz", { status: 500 });
+    const outcome = computeResult(currentUserId, quizId, selectedAnswers);
+    if (!outcome.ok) {
+      throw data(outcome.error, { status: 400 });
     }
 
-    return { quizResult: result };
+    return { quizResult: outcome.result };
   }
 
   if (intent === "create-comment") {
